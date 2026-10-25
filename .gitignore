@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 .env
 data/
-*.md.tmp
+*.tmp
 .pytest_cache/
-node_modules/
-dist/
+
+web/node_modules/

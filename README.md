@@ -2,7 +2,7 @@
 
 App personale per trascrivere registrazioni audio (riunioni, lezioni, interviste, chiamate) e lavorare sul contenuto: riassunti con template, keywords, estrazione strutturata con timestamp, mappa mentale e domande sulla registrazione.
 
-> **Stato:** tappe 1-2 di 5: prototipo da riga di comando e server con API ed elaborazioni in background. L'interfaccia web arriva nella tappa 3.
+> **Stato:** tappe 1-3 di 5: riga di comando, server con elaborazioni in background e interfaccia web per PC e telefono. Prossima tappa: export Word e PDF e rifiniture.
 
 ## Come funziona
 
@@ -122,7 +122,7 @@ python -m app.cli export <id> -o riunione.md
 
 Basta l'inizio dell'id (per esempio `20261025`) se non è ambiguo.
 
-Tempi indicativi sul tuo PC (Ryzen 5 4500U): con `large-v3-turbo` la trascrizione di 2 ore di audio richiede **2-3 ore**. Per una bozza veloce usa `--veloce`, che passa al modello `small`: circa 3 volte più rapido ma meno preciso.
+Tempi misurati sul tuo PC (Ryzen 5 4500U): con `large-v3-turbo` la trascrizione procede circa in **tempo reale**, quindi 2 ore di audio richiedono circa 2 ore. Per una bozza veloce usa `--veloce`, che passa al modello `small`: circa 3 volte più rapido ma meno preciso.
 
 ### Tutti i comandi
 
@@ -147,7 +147,7 @@ Opzioni globali, da mettere prima del comando: `--motore ollama|gemini|claude` e
 python -m app.cli templates create "assemblea di condominio: spese approvate, votazioni, lavori e scadenze"
 ```
 
-## Server web (tappa 2)
+## Interfaccia web
 
 ```powershell
 python -m app.server
@@ -157,7 +157,13 @@ Il server mostra due indirizzi: `http://localhost:8000` per il PC e `http://192.
 
 - Le elaborazioni lunghe girano in background, una alla volta, con l'avanzamento salvato. Se chiudi il server, alla riapertura riprendono da sole.
 - **Consigliato:** imposta `APP_PASSWORD=` nel file `.env`, così chi usa il tuo Wi-Fi non può aprire le registrazioni.
-- L'elenco completo delle API si trova su `http://localhost:8000/docs`. L'interfaccia grafica arriva nella tappa 3.
+- L'elenco completo delle API si trova su `http://localhost:8000/docs`.
+- **Registrare dal browser** funziona sul PC (`http://localhost:8000`). Dal telefono il browser blocca il microfono sulle connessioni non cifrate: registra con l'app Registratore del telefono e usa **Carica**.
+- Sul telefono puoi aggiungere l'app alla schermata Home (menu del browser → *Aggiungi a schermata Home*).
+
+Cosa trovi nell'interfaccia: elenco con ricerca, caricamento o registrazione con conferma del consenso, avanzamento delle elaborazioni, pagina di dettaglio con player (velocità, ±15 s), trascrizione sincronizzata e modificabile (tocca una frase per ascoltarla), nomi degli interlocutori, schede Riassunto (template, keywords, argomenti), Estrazioni (con download JSON), Mappa mentale e Chiedi (risposte con orari cliccabili), template personalizzati, export Markdown.
+
+L'interfaccia è già compilata in `web/dist`, quindi non serve installare altro. Per modificarla serve Node.js: `cd web`, `npm install`, `npm run dev` (con il server Python acceso), poi `npm run build`.
 
 ## Opzioni avanzate
 

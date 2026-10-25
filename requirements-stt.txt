@@ -1,2 +1,4 @@
 # Trascrizione locale sul processore
 faster-whisper>=1.1.0
+# faster-whisper 1.2 usa un parametro di av.open() rimosso in PyAV 16+
+av>=11,<16

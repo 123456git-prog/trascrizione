@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import shutil
+import threading
+import time
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -30,10 +32,39 @@ class RecordingMeta(BaseModel):
     job: Optional[dict] = None
 
 
+_write_lock = threading.Lock()
+_meta_lock = threading.RLock()
+
+
 def _write_json(path: Path, data: Any) -> None:
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(path)  # scrittura atomica: un'interruzione non lascia file a metà
+    """Scrittura atomica: un'interruzione non lascia file a metà.
+
+    Su Windows la sostituzione fallisce se nello stesso istante un altro thread sta leggendo
+    il file (PermissionError): in quel caso si riprova dopo un attimo.
+    """
+    text = json.dumps(data, ensure_ascii=False, indent=2)
+    with _write_lock:
+        tmp = path.with_name(f"{path.name}.{uuid.uuid4().hex[:8]}.tmp")
+        tmp.write_text(text, encoding="utf-8")
+        for attempt in range(20):
+            try:
+                tmp.replace(path)
+                return
+            except PermissionError:
+                if attempt == 19:
+                    tmp.unlink(missing_ok=True)
+                    raise
+                time.sleep(0.05)
+
+
+def _read_json(path: Path) -> Any:
+    for attempt in range(20):
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except PermissionError:  # Windows: file in sostituzione proprio ora
+            if attempt == 19:
+                raise
+            time.sleep(0.05)
 
 
 class RecordingStore:
@@ -67,7 +98,7 @@ class RecordingStore:
         metas = []
         for folder in sorted(self.root.iterdir(), reverse=True):
             if (folder / "meta.json").exists():
-                metas.append(RecordingMeta(**json.loads((folder / "meta.json").read_text(encoding="utf-8"))))
+                metas.append(RecordingMeta(**_read_json(folder / "meta.json")))
         return metas
 
     def resolve_id(self, prefix: str) -> str:
@@ -80,14 +111,15 @@ class RecordingStore:
         raise NotFoundError(f"L'id '{prefix}' è ambiguo: " + ", ".join(matches))
 
     def meta(self, rec_id: str) -> RecordingMeta:
-        return RecordingMeta(**json.loads((self.dir(rec_id) / "meta.json").read_text(encoding="utf-8")))
+        return RecordingMeta(**_read_json(self.dir(rec_id) / "meta.json"))
 
     def save_meta(self, meta: RecordingMeta) -> None:
         _write_json(self.root / meta.id / "meta.json", meta.model_dump())
 
     def update_meta(self, rec_id: str, **fields: Any) -> RecordingMeta:
-        meta = self.meta(rec_id).model_copy(update=fields)
-        self.save_meta(meta)
+        with _meta_lock:  # lettura e scrittura insieme: il worker e le API non si sovrascrivono a vicenda
+            meta = self.meta(rec_id).model_copy(update=fields)
+            self.save_meta(meta)
         return meta
 
     def audio_path(self, rec_id: str) -> Path:
@@ -102,7 +134,7 @@ class RecordingStore:
         path = self.dir(rec_id) / "transcript.json"
         if not path.exists():
             raise NotFoundError("La registrazione non è ancora stata trascritta.")
-        return Transcript(**json.loads(path.read_text(encoding="utf-8")))
+        return Transcript(**_read_json(path))
 
     def save_transcript(self, rec_id: str, transcript: Transcript) -> None:
         _write_json(self.dir(rec_id) / "transcript.json", transcript.model_dump())
@@ -111,7 +143,7 @@ class RecordingStore:
 
     def analysis(self, rec_id: str) -> dict:
         path = self.dir(rec_id) / "analysis.json"
-        return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+        return _read_json(path) if path.exists() else {}
 
     def save_analysis(self, rec_id: str, data: dict) -> None:
         _write_json(self.dir(rec_id) / "analysis.json", data)
