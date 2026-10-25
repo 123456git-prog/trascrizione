@@ -1,0 +1,4 @@
+# Base: analisi con Claude e riga di comando
+anthropic>=2.3.0
+pydantic>=2.7
+python-dotenv>=1.0

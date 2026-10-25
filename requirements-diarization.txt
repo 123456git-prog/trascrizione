@@ -1,0 +1,2 @@
+# Riconoscimento interlocutori in locale (scarica circa 1 GB tra torch e modelli)
+pyannote.audio>=3.3
