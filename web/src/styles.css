@@ -325,3 +325,6 @@ button.chip { cursor: pointer; }
 .login-card .btn { width: 100%; }
 
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.export-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.export-buttons .btn { text-decoration: none; color: var(--ink); }

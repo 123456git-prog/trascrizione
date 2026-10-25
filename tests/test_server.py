@@ -76,6 +76,11 @@ def test_upload_process_and_read(client, audio_bytes):
     r = client.get(f"/api/recordings/{rec_id}/export")
     assert r.status_code == 200 and r.text.startswith("# Riunione budget")
     assert "filename*=UTF-8''Riunione%20budget.md" in r.headers["content-disposition"]
+    r = client.get(f"/api/recordings/{rec_id}/export", params={"format": "docx"})
+    assert r.status_code == 200 and r.content[:2] == b"PK"
+    r = client.get(f"/api/recordings/{rec_id}/export", params={"format": "pdf"})
+    assert r.status_code == 200 and r.content.startswith(b"%PDF")
+    assert client.get(f"/api/recordings/{rec_id}/export", params={"format": "odt"}).status_code == 400
 
 
 def test_edit_transcript_and_speakers(client, audio_bytes):

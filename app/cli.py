@@ -215,11 +215,21 @@ def cmd_speakers(service: Service, args) -> None:
 
 
 def cmd_export(service: Service, args) -> None:
+    from .export_docs import to_docx, to_pdf
+
     rec_id = service.store.resolve_id(args.id)
     md = to_markdown(service.store.meta(rec_id), service.store.transcript(rec_id), service.store.analysis(rec_id),
-                     args.template)
-    out = Path(args.output or f"{rec_id}.md")
-    out.write_text(md, encoding="utf-8")
+                     args.template, include_transcript=not args.no_transcript)
+    out = Path(args.output or f"{rec_id}.{args.format}")
+    fmt = out.suffix.lstrip(".").lower() if args.output else args.format
+    if fmt == "md":
+        out.write_text(md, encoding="utf-8")
+    elif fmt == "docx":
+        out.write_bytes(to_docx(md))
+    elif fmt == "pdf":
+        out.write_bytes(to_pdf(md))
+    else:
+        raise AppError("Formato non supportato: usa .md, .docx o .pdf")
     print(f"Esportato in {out.resolve()}")
 
 
@@ -293,9 +303,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--yes", "-y", action="store_true", help="non chiedere conferma")
     p.set_defaults(func=cmd_delete)
 
-    p = sub.add_parser("export", help="esporta in Markdown")
+    p = sub.add_parser("export", help="esporta in Markdown, Word o PDF")
     p.add_argument("id")
-    p.add_argument("--output", "-o")
+    p.add_argument("--format", "-f", choices=["md", "docx", "pdf"], default="md")
+    p.add_argument("--output", "-o", help="file di destinazione (il formato si deduce dall'estensione)")
+    p.add_argument("--no-transcript", action="store_true", help="senza la trascrizione completa")
     p.add_argument("--template")
     p.set_defaults(func=cmd_export)
     return parser

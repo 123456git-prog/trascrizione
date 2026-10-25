@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -244,15 +244,23 @@ def create_app(settings: Optional[Settings] = None, service: Optional[Service] =
         meta = service.store.meta(rec_id)
         md = to_markdown(meta, service.store.transcript(rec_id), service.store.analysis(rec_id), template,
                          include_transcript=transcript)
-        if format != "md":
-            raise AppError("Formato non ancora disponibile: per ora solo Markdown (Word e PDF in arrivo).")
         from urllib.parse import quote
 
+        from .export_docs import to_docx, to_pdf
+
+        formats = {
+            "md": (lambda: md.encode("utf-8"), "text/markdown; charset=utf-8"),
+            "docx": (lambda: to_docx(md),
+                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+            "pdf": (lambda: to_pdf(md), "application/pdf"),
+        }
+        if format not in formats:
+            raise AppError("Formato non supportato: usa md, docx o pdf.")
+        render, media_type = formats[format]
         ascii_name = "".join(c if c.isascii() and (c.isalnum() or c in " -_") else "_" for c in meta.title)
-        disposition = (f'attachment; filename="{ascii_name.strip() or rec_id}.md"; '
-                       f"filename*=UTF-8''{quote(meta.title + '.md')}")
-        return PlainTextResponse(md, media_type="text/markdown; charset=utf-8",
-                                 headers={"Content-Disposition": disposition})
+        disposition = (f'attachment; filename="{ascii_name.strip() or rec_id}.{format}"; '
+                       f"filename*=UTF-8''{quote(meta.title + '.' + format)}")
+        return Response(render(), media_type=media_type, headers={"Content-Disposition": disposition})
 
     # --- template e motori ---
 

@@ -2,7 +2,7 @@
 
 App personale per trascrivere registrazioni audio (riunioni, lezioni, interviste, chiamate) e lavorare sul contenuto: riassunti con template, keywords, estrazione strutturata con timestamp, mappa mentale e domande sulla registrazione.
 
-> **Stato:** tappe 1-3 di 5: riga di comando, server con elaborazioni in background e interfaccia web per PC e telefono. Prossima tappa: export Word e PDF e rifiniture.
+> **Stato:** tappe 1-3 di 5: riga di comando, server con elaborazioni in background e interfaccia web per PC e telefono. Tappa 4 in corso: export Word e PDF disponibile.
 
 ## Come funziona
 
@@ -117,7 +117,7 @@ python -m app.cli ask <id>
 python -m app.cli summary <id> --template lezione
 python -m app.cli show <id> json
 python -m app.cli show <id> mindmap
-python -m app.cli export <id> -o riunione.md
+python -m app.cli export <id> -o riunione.docx   # oppure .pdf o .md
 ```
 
 Basta l'inizio dell'id (per esempio `20261025`) se non è ambiguo.
@@ -136,7 +136,7 @@ Tempi misurati sul tuo PC (Ryzen 5 4500U): con `large-v3-turbo` la trascrizione 
 | `templates` / `templates create "descrizione"` / `templates delete ID` | template di riassunto |
 | `speakers ID [SPEAKER_00=Marco ...]` | mostra o rinomina gli interlocutori |
 | `show ID [summary\|transcript\|json\|mindmap]` | mostra i risultati |
-| `export ID [-o file.md]` | export in Markdown (Word e PDF nella tappa 4) |
+| `export ID [-f md\|docx\|pdf] [-o file] [--no-transcript]` | export in Markdown, Word o PDF |
 | `list` / `delete ID` | archivio |
 
 Opzioni globali, da mettere prima del comando: `--motore ollama|gemini|claude` e `--veloce`.
@@ -161,7 +161,7 @@ Il server mostra due indirizzi: `http://localhost:8000` per il PC e `http://192.
 - **Registrare dal browser** funziona sul PC (`http://localhost:8000`). Dal telefono il browser blocca il microfono sulle connessioni non cifrate: registra con l'app Registratore del telefono e usa **Carica**.
 - Sul telefono puoi aggiungere l'app alla schermata Home (menu del browser → *Aggiungi a schermata Home*).
 
-Cosa trovi nell'interfaccia: elenco con ricerca, caricamento o registrazione con conferma del consenso, avanzamento delle elaborazioni, pagina di dettaglio con player (velocità, ±15 s), trascrizione sincronizzata e modificabile (tocca una frase per ascoltarla), nomi degli interlocutori, schede Riassunto (template, keywords, argomenti), Estrazioni (con download JSON), Mappa mentale e Chiedi (risposte con orari cliccabili), template personalizzati, export Markdown.
+Cosa trovi nell'interfaccia: elenco con ricerca, caricamento o registrazione con conferma del consenso, avanzamento delle elaborazioni, pagina di dettaglio con player (velocità, ±15 s), trascrizione sincronizzata e modificabile (tocca una frase per ascoltarla), nomi degli interlocutori, schede Riassunto (template, keywords, argomenti), Estrazioni (con download JSON), Mappa mentale e Chiedi (risposte con orari cliccabili), template personalizzati, export in Word, PDF e Markdown.
 
 L'interfaccia è già compilata in `web/dist`, quindi non serve installare altro. Per modificarla serve Node.js: `cd web`, `npm install`, `npm run dev` (con il server Python acceso), poi `npm run build`.
 

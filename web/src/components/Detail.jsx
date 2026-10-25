@@ -6,7 +6,7 @@ import SummaryTab from "./SummaryTab.jsx";
 import ExtractionTab from "./ExtractionTab.jsx";
 import MindMapTab from "./MindMapTab.jsx";
 import ChatTab from "./ChatTab.jsx";
-import { Icon, StatusBadge } from "./ui.jsx";
+import { Icon, Sheet, StatusBadge } from "./ui.jsx";
 
 const TABS = [
   ["transcript", "Trascrizione"],
@@ -22,6 +22,7 @@ export default function Detail({ id }) {
   const [tab, setTab] = useState(() => sessionStorage.getItem("tab") || "transcript");
   const [time, setTime] = useState(0);
   const [editingTitle, setEditingTitle] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const audio = useRef(null);
 
   const load = useCallback(async () => {
@@ -100,9 +101,9 @@ export default function Detail({ id }) {
   return (
     <main className="page detail">
       <BackBar>
-        <a className="icon-btn" href={api.exportUrl(id)} title="Esporta in Markdown" download>
+        <button className="icon-btn" onClick={() => setExporting(true)} title="Esporta">
           <Icon name="download" />
-        </a>
+        </button>
         <button className="icon-btn" onClick={remove} title="Elimina">
           <Icon name="trash" />
         </button>
@@ -161,8 +162,46 @@ export default function Detail({ id }) {
         )}
       </section>
 
+      {exporting && <ExportSheet id={id} analysis={analysis} onClose={() => setExporting(false)} />}
+
       <Player ref={audio} src={api.audioUrl(id)} duration={meta.duration} onTime={setTime} />
     </main>
+  );
+}
+
+function ExportSheet({ id, analysis, onClose }) {
+  const [withTranscript, setWithTranscript] = useState(true);
+  const summaries = analysis?.summaries || {};
+  const [template, setTemplate] = useState(analysis?.last_template || Object.keys(summaries)[0] || "");
+  const url = (format) => `${api.exportUrl(id, format, template)}&transcript=${withTranscript}`;
+  return (
+    <Sheet title="Esporta" onClose={onClose}>
+      <div className="form">
+        {Object.keys(summaries).length > 1 && (
+          <label className="field">
+            <span>Riassunto da includere</span>
+            <select value={template} onChange={(e) => setTemplate(e.target.value)}>
+              {Object.entries(summaries).map(([k, s]) => (
+                <option key={k} value={k}>
+                  {s.template_name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label className="check">
+          <input type="checkbox" checked={withTranscript} onChange={(e) => setWithTranscript(e.target.checked)} />
+          <span>Includi la trascrizione completa</span>
+        </label>
+        <div className="export-buttons">
+          {[["docx", "Word"], ["pdf", "PDF"], ["md", "Markdown"]].map(([f, label]) => (
+            <a key={f} className="btn secondary" href={url(f)} download>
+              <Icon name="download" size={18} /> {label}
+            </a>
+          ))}
+        </div>
+      </div>
+    </Sheet>
   );
 }
 
