@@ -22,10 +22,12 @@ class RecordingMeta(BaseModel):
     original_filename: str
     audio_file: str
     duration: float = 0.0
-    status: str = "caricata"  # caricata | trascrizione | analisi | pronta | errore
+    status: str = "caricata"  # caricata | in coda | trascrizione | trascritta | analisi | pronta | errore
     progress: float = 0.0
     progress_message: str = ""
     error: Optional[str] = None
+    # lavoro in coda o in corso, per riprenderlo se il server viene riavviato
+    job: Optional[dict] = None
 
 
 def _write_json(path: Path, data: Any) -> None:

@@ -2,7 +2,7 @@
 
 App personale per trascrivere registrazioni audio (riunioni, lezioni, interviste, chiamate) e lavorare sul contenuto: riassunti con template, keywords, estrazione strutturata con timestamp, mappa mentale e domande sulla registrazione.
 
-> **Stato:** tappa 1 di 5, prototipo da riga di comando. L'interfaccia web arriva nelle tappe successive.
+> **Stato:** tappe 1-2 di 5: prototipo da riga di comando e server con API ed elaborazioni in background. L'interfaccia web arriva nella tappa 3.
 
 ## Come funziona
 
@@ -146,6 +146,18 @@ Opzioni globali, da mettere prima del comando: `--motore ollama|gemini|claude` e
 ```powershell
 python -m app.cli templates create "assemblea di condominio: spese approvate, votazioni, lavori e scadenze"
 ```
+
+## Server web (tappa 2)
+
+```powershell
+python -m app.server
+```
+
+Il server mostra due indirizzi: `http://localhost:8000` per il PC e `http://192.168.x.x:8000` per il telefono collegato allo stesso Wi-Fi. La prima volta Windows chiede se consentire l'accesso alla rete: scegli **Reti private**.
+
+- Le elaborazioni lunghe girano in background, una alla volta, con l'avanzamento salvato. Se chiudi il server, alla riapertura riprendono da sole.
+- **Consigliato:** imposta `APP_PASSWORD=` nel file `.env`, così chi usa il tuo Wi-Fi non può aprire le registrazioni.
+- L'elenco completo delle API si trova su `http://localhost:8000/docs`. L'interfaccia grafica arriva nella tappa 3.
 
 ## Opzioni avanzate
 

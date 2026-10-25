@@ -149,11 +149,7 @@ def cmd_show(service: Service, args) -> None:
 def cmd_summary(service: Service, args) -> None:
     """Nuovo riassunto con un altro template: riusa gli appunti dei blocchi già calcolati."""
     rec_id = service.store.resolve_id(args.id)
-    analyzer = service.analyzer(rec_id, choose_provider(service, args, rec_id))
-    template = service.templates.get(args.template)
-    s = analyzer.summary(template, force=args.force)
-    analyzer.mindmap(template, force=args.force)
-    service.store.save_analysis(rec_id, analyzer.cache)
+    s = service.summary(rec_id, args.template, choose_provider(service, args, rec_id), force=args.force)
     print(f"# {s['title']}\n\n{s['markdown']}")
 
 

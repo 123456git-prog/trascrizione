@@ -120,6 +120,28 @@ class Service:
         self.store.update_meta(rec_id, status="pronta", title=new_title, error=None)
         return analyzer.cache
 
+    def summary(self, rec_id: str, template_id: str, provider: Optional[str] = None, force: bool = False,
+                progress: Optional[ProgressFn] = None) -> dict:
+        """Riassunto (e mappa mentale) con un altro template: riusa gli appunti dei blocchi già calcolati."""
+        template = self.templates.get(template_id)
+        analyzer = self.analyzer(rec_id, provider)
+        report = self._progress(rec_id, "analisi", progress)
+        try:
+            analyzer.notes(lambda f, m: report(0.7 * f, m))
+            self.store.save_analysis(rec_id, analyzer.cache)
+            report(0.7, f"Riassunto {template.name}")
+            result = analyzer.summary(template, force=force)
+            self.store.save_analysis(rec_id, analyzer.cache)
+            report(0.9, "Mappa mentale")
+            analyzer.mindmap(template, force=force)
+            analyzer.cache["last_template"] = template.id
+            self.store.save_analysis(rec_id, analyzer.cache)
+        except AppError as e:
+            self.store.update_meta(rec_id, status="errore", error=str(e))
+            raise
+        self.store.update_meta(rec_id, status="pronta", progress=1.0, error=None)
+        return result
+
     def process(self, path: Path, title: Optional[str] = None, template_id: str = "riunione",
                 progress: Optional[ProgressFn] = None, provider: Optional[str] = None) -> str:
         self.templates.get(template_id)  # verifica subito che il template esista

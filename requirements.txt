@@ -1,4 +1,7 @@
-# Base: analisi con Claude e riga di comando
+# Base: analisi del testo, riga di comando e server web
 anthropic>=2.3.0
 pydantic>=2.7
 python-dotenv>=1.0
+fastapi>=0.115
+uvicorn>=0.30
+python-multipart>=0.0.9
