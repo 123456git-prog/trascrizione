@@ -26,6 +26,36 @@ CONSENT_NOTICE = (
 )
 
 
+PROVIDERS = [
+    ("ollama", "Locale con Ollama: gratis, lento, adatto ai dati sensibili (nulla esce dal PC)"),
+    ("gemini", "Gemini in cloud: gratis e veloce, SOLO per dati non sensibili"),
+    ("claude", "Claude: a pagamento, qualità migliore"),
+]
+
+
+def choose_provider(service: Service, args, rec_id: str | None = None) -> str:
+    """Il motore di analisi si sceglie ogni volta: da --motore, da quello già usato, o chiedendo."""
+    if args.motore:
+        return args.motore
+    if rec_id:
+        previous = service.store.analysis(rec_id).get("provider")
+        if previous:
+            return previous
+    default = service.settings.llm_provider
+    if not sys.stdin.isatty():
+        return default
+    print("\nCon quale motore vuoi analizzare il testo?")
+    for i, (key, label) in enumerate(PROVIDERS, 1):
+        print(f"  {i}. {label}" + ("  [predefinito]" if key == default else ""))
+    while True:
+        answer = input("Scelta (invio = predefinito): ").strip()
+        if not answer:
+            return default
+        if answer in {"1", "2", "3"}:
+            return PROVIDERS[int(answer) - 1][0]
+        print("Scrivi 1, 2 o 3.")
+
+
 class ProgressPrinter:
     def __init__(self):
         self.last = ""
@@ -52,6 +82,7 @@ def _print_summary(service: Service, rec_id: str, template_id: str | None) -> No
 
 def cmd_process(service: Service, args) -> None:
     print(CONSENT_NOTICE)
+    provider = None if args.only_transcribe else choose_provider(service, args)
     p = ProgressPrinter()
     rec_id = service.import_audio(Path(args.file), args.title)
     print(f"Registrazione creata: {rec_id}")
@@ -61,7 +92,7 @@ def cmd_process(service: Service, args) -> None:
         if args.only_transcribe:
             print(f"Trascrizione salvata. Per analizzarla: python -m app.cli analyze {rec_id}")
             return
-        service.analyze(rec_id, args.template, p, args.motore)
+        service.analyze(rec_id, args.template, p, provider)
         p.done()
     except AppError:
         p.done()
@@ -80,11 +111,12 @@ def cmd_transcribe(service: Service, args) -> None:
 
 def cmd_analyze(service: Service, args) -> None:
     rec_id = service.store.resolve_id(args.id)
+    provider = choose_provider(service, args, rec_id)
     p = ProgressPrinter()
     if not service.store.has_transcript(rec_id):
         service.transcribe(rec_id, p)
         p.done()
-    service.analyze(rec_id, args.template, p, args.motore)
+    service.analyze(rec_id, args.template, p, provider)
     p.done()
     _print_summary(service, rec_id, args.template)
 
@@ -117,7 +149,7 @@ def cmd_show(service: Service, args) -> None:
 def cmd_summary(service: Service, args) -> None:
     """Nuovo riassunto con un altro template: riusa gli appunti dei blocchi già calcolati."""
     rec_id = service.store.resolve_id(args.id)
-    analyzer = service.analyzer(rec_id, args.motore)
+    analyzer = service.analyzer(rec_id, choose_provider(service, args, rec_id))
     template = service.templates.get(args.template)
     s = analyzer.summary(template, force=args.force)
     analyzer.mindmap(template, force=args.force)
@@ -127,7 +159,7 @@ def cmd_summary(service: Service, args) -> None:
 
 def cmd_ask(service: Service, args) -> None:
     rec_id = service.store.resolve_id(args.id)
-    analyzer = service.analyzer(rec_id, args.motore)
+    analyzer = service.analyzer(rec_id, choose_provider(service, args, rec_id))
     history: list[dict] = []
     question = args.question
     if not question:
@@ -158,7 +190,7 @@ def cmd_templates(service: Service, args) -> None:
             raise AppError('Descrivi il template, es.: templates create "riunione di condominio con spese e votazioni"')
         from .analysis.pipeline import create_template
 
-        t = create_template(service.llm_for(args.motore), service.templates, " ".join(args.text))
+        t = create_template(service.llm_for(choose_provider(service, args)), service.templates, " ".join(args.text))
         print(f"Creato template '{t.id}': {t.name}\n{t.description}\n\n{t.instructions}")
     elif args.action == "delete":
         service.templates.delete(args.text[0])
@@ -210,8 +242,8 @@ def cmd_delete(service: Service, args) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m app.cli", description="Trascrizione e analisi di registrazioni")
     parser.add_argument("--veloce", action="store_true", help="trascrizione con un modello più piccolo (bozza rapida)")
-    parser.add_argument("--motore", choices=["claude", "ollama"],
-                        help="motore di analisi: claude (API) o ollama (locale, gratuito)")
+    parser.add_argument("--motore", choices=[p[0] for p in PROVIDERS],
+                        help="motore di analisi: ollama (locale), gemini (cloud gratis) o claude (a pagamento)")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("process", help="importa un audio, trascrive e analizza")

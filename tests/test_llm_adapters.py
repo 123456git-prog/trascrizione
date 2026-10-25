@@ -128,3 +128,69 @@ def test_ollama_adapter(ollama_server):
 def test_ollama_not_running():
     with pytest.raises(AnalysisError, match="Ollama non risponde"):
         OllamaLLM(url="http://127.0.0.1:9").structured("s", [user_message("x")], m.ChatAnswer)
+
+
+@pytest.fixture
+def gemini_server():
+    state = {"requests": [], "fail_first": 1}
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            state["requests"].append((self.path, self.headers.get("x-goog-api-key"), body))
+            if state["fail_first"]:
+                state["fail_first"] -= 1
+                self.send_response(429)
+                self.end_headers()
+                self.wfile.write(b'{"error":{"code":429}}')
+                return
+            parts = [{"text": "ragionamento", "thought": True},
+                     {"text": json.dumps({"title": "T", "markdown": "## A"})}]
+            payload = json.dumps({"candidates": [{"content": {"parts": parts}, "finishReason": "STOP"}]})
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(payload.encode())
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{server.server_port}", state
+    server.shutdown()
+
+
+def test_gemini_adapter_retries_and_parses(gemini_server):
+    from app.analysis.gemini import GeminiLLM
+
+    url, state = gemini_server
+    llm = GeminiLLM("gemini-3.8-flash", api_key="g-key", retry_delay=0.01, base_url=url)
+    history = [user_message("prima", context="CTX"), {"role": "assistant", "content": "risposta"},
+               user_message("seconda")]
+    out = llm.structured("sistema", history, m.SummaryOut)
+    assert out.title == "T"
+    assert len(state["requests"]) == 2  # primo tentativo 429, poi riuscito
+    path, key, body = state["requests"][-1]
+    assert path == "/v1beta/models/gemini-3.8-flash:generateContent" and key == "g-key"
+    assert body["systemInstruction"]["parts"][0]["text"] == "sistema"
+    assert [c["role"] for c in body["contents"]] == ["user", "model", "user"]
+    assert body["contents"][0]["parts"][0]["text"] == "CTX\n\nprima"
+    assert body["generationConfig"]["responseJsonSchema"]["required"] == ["title", "markdown"]
+
+
+def test_gemini_requires_key():
+    from app.analysis.gemini import GeminiLLM
+
+    with pytest.raises(AnalysisError, match="GEMINI_API_KEY"):
+        GeminiLLM(api_key="")
+
+
+def test_inline_schema_keeps_title_fields():
+    from app.analysis.schema import inline_schema
+
+    s = inline_schema(m.KeywordsOut)
+    assert "$defs" not in s
+    topic = s["properties"]["topics"]["items"]
+    assert set(topic["properties"]) == {"title", "description", "segment_ids"}
+    assert inline_schema(m.SummaryOut)["properties"]["title"] == {"description": m.SummaryOut.model_fields["title"].description, "type": "string"}

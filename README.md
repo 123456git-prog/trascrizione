@@ -10,8 +10,8 @@ App personale per trascrivere registrazioni audio (riunioni, lezioni, interviste
 audio (mp3, m4a, wav)
    │  ffmpeg → WAV 16 kHz
    ▼
-TRASCRIZIONE (sempre in locale)          ANALISI DEL TESTO (sostituibile)
-faster-whisper  o  whisper.cpp    ──►    Claude (API)  o  Ollama (locale, gratis)
+TRASCRIZIONE (sempre in locale)          ANALISI DEL TESTO (scegli ogni volta)
+faster-whisper  o  whisper.cpp    ──►    Ollama (locale) · Gemini (cloud gratis) · Claude
 + pyannote per gli interlocutori         blocchi → appunti → riassunto finale
    │                                     keywords · estrazione JSON · mappa · chat
    ▼                                              │
@@ -24,6 +24,7 @@ data/recordings/<id>/  ◄──────────────────
 - **Ogni elemento estratto** (decisioni, azioni, persone, date, cifre, domande aperte) è collegato al segmento d'origine, con timestamp e interlocutore. Claude indica solo l'id del segmento: il timestamp lo prende il programma dalla trascrizione, quindi non può essere inventato.
 - **Se qualcosa si interrompe** (rete, credito, errore), rilanciando `analyze` si riparte dal punto in cui ci si era fermati.
 - **Le chiavi API** stanno solo nel file `.env` sul tuo PC, mai nel browser.
+- **Ogni volta scegli il motore di analisi** in base alla sensibilità dei dati (vedi sotto).
 
 ## Installazione su Windows
 
@@ -72,12 +73,25 @@ copy .env.example .env
 notepad .env
 ```
 
-Scegli il motore di analisi:
+Prepara i motori di analisi. Ogni volta che analizzi una registrazione il programma ti chiede quale usare.
 
-- **Claude (consigliato per la qualità):** crea una chiave su [console.anthropic.com](https://console.anthropic.com) (Settings → API Keys), ricarica qualche euro di credito e incollala in `ANTHROPIC_API_KEY=`. Costo indicativo: 0,50-1 € per una registrazione di 2 ore con `claude-opus-5-5`. Con `CLAUDE_MODEL=claude-haiku-5-5` il costo scende a pochi centesimi, con qualità più bassa.
-- **Ollama (gratis, tutto in locale):** installa Ollama da [ollama.com](https://ollama.com), poi esegui `ollama pull gemma3:4b` e imposta `LLM_PROVIDER=ollama`. Su un portatile con 8 GB di RAM è lento (1-3 ore di analisi per 2 ore di audio) e meno preciso, ma nessun dato esce dal PC.
+| Motore | Costo | Velocità sul tuo PC | Privacy | Quando usarlo |
+|---|---|---|---|---|
+| **1. Ollama** (locale) | gratis | lento: 1-3 ore per 2 ore di audio | nulla esce dal PC | dati sensibili |
+| **2. Gemini** (cloud) | gratis entro la quota | pochi minuti | il testo va a Google | solo dati **non** sensibili |
+| **3. Claude** (cloud) | 0,50-1 € a registrazione | pochi minuti | il testo va ad Anthropic | facoltativo, qualità migliore |
 
-Puoi anche scegliere caso per caso con `--motore claude` oppure `--motore ollama`.
+**Ollama (locale):** installa Ollama da [ollama.com](https://ollama.com), poi esegui:
+
+```powershell
+ollama pull gemma3:4b
+```
+
+**Gemini (quota gratuita):** vai su [aistudio.google.com](https://aistudio.google.com), accedi con un account Google, clicca **Get API key** e poi **Create API key**. Incollala nel file `.env` in `GEMINI_API_KEY=`. La quota gratuita ha limiti di richieste al minuto e al giorno: se li superi, il programma aspetta e riprova da solo.
+
+**Claude (facoltativo):** crea una chiave su [console.anthropic.com](https://console.anthropic.com) (Settings → API Keys), ricarica qualche euro di credito e incollala in `ANTHROPIC_API_KEY=`.
+
+Per saltare la domanda puoi indicare il motore nel comando, per esempio `python -m app.cli --motore gemini analyze <id>`. Una registrazione già analizzata continua a usare lo stesso motore, a meno che tu non ne indichi un altro con `--motore`.
 
 ## Come provarlo
 
@@ -125,7 +139,7 @@ Tempi indicativi sul tuo PC (Ryzen 5 4500U): con `large-v3-turbo` la trascrizion
 | `export ID [-o file.md]` | export in Markdown (Word e PDF nella tappa 4) |
 | `list` / `delete ID` | archivio |
 
-Opzioni globali, da mettere prima del comando: `--motore claude|ollama` e `--veloce`.
+Opzioni globali, da mettere prima del comando: `--motore ollama|gemini|claude` e `--veloce`.
 
 **Template predefiniti:** `riunione`, `intervista`, `lezione`, `vendita`. Per crearne uno tuo descrivilo a parole:
 
@@ -167,7 +181,7 @@ In pratica:
 - **Usa le registrazioni solo per lo scopo dichiarato** (appunti, verbale) e non diffonderle.
 - **Conserva il minimo necessario:** elimina audio e trascrizioni quando non servono più (`python -m app.cli delete ID`). Tutti i dati sono nella cartella `data/` del tuo PC.
 - **Proteggi il PC:** password di accesso e, se possibile, cifratura del disco (BitLocker).
-- **Categorie particolari di dati** (salute, opinioni politiche, dati di minori e simili) richiedono ancora più cautela: per queste usa l'analisi locale (`--motore ollama`).
+- **Dati sensibili** (salute, opinioni politiche, dati di minori, informazioni riservate di lavoro e simili): usa **solo** l'analisi locale (`--motore ollama`).
 
 Dove vanno i dati:
 
@@ -175,8 +189,11 @@ Dove vanno i dati:
 |---|---|---|
 | Trascrizione e interlocutori | sul tuo PC | nulla (si scaricano solo i modelli) |
 | Analisi con Ollama | sul tuo PC | nulla |
+| Analisi con Gemini | server di Google | il **testo** della trascrizione, non l'audio |
 | Analisi con Claude | server di Anthropic | il **testo** della trascrizione, non l'audio |
 
-Con Claude il testo viene inviato ad Anthropic (Stati Uniti). In base ai termini commerciali dell'API, i dati non vengono usati per addestrare i modelli. Per contenuti molto sensibili usa Ollama.
+**Gemini gratuito:** i termini di Google valgono per i servizi gratuiti. In generale Google può usare i contenuti per migliorare i propri prodotti e farli leggere a revisori umani. Per chi si trova nello Spazio Economico Europeo, in Svizzera o nel Regno Unito si applicano invece le regole dei servizi a pagamento, quindi i contenuti non vengono usati a quello scopo ([termini](https://ai.google.dev/gemini-api/terms)). Google stessa raccomanda comunque di non inviare informazioni sensibili ai servizi gratuiti: usalo solo per registrazioni non sensibili.
+
+**Claude:** il testo viene inviato ad Anthropic (Stati Uniti). In base ai termini commerciali dell'API, i dati non vengono usati per addestrare i modelli.
 
 Questo avviso è una guida pratica e non sostituisce una consulenza legale.

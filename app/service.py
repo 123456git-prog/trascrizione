@@ -39,7 +39,11 @@ class Service:
             from .analysis.ollama import OllamaLLM
 
             return OllamaLLM(self.settings.ollama_model, self.settings.ollama_url, self.settings.ollama_num_ctx)
-        raise AppError(f"Motore di analisi sconosciuto: '{provider}' (usa 'claude' oppure 'ollama')")
+        if provider == "gemini":
+            from .analysis.gemini import GeminiLLM
+
+            return GeminiLLM(self.settings.gemini_model, self.settings.gemini_api_key)
+        raise AppError(f"Motore di analisi sconosciuto: '{provider}' (usa ollama, gemini oppure claude)")
 
     @property
     def llm(self) -> LLM:
@@ -94,7 +98,8 @@ class Service:
         local = provider == "ollama"
         analyzer = Analyzer(self.llm_for(provider), self.store.transcript(rec_id), cache,
                             self.settings.ollama_chunk_chars if local else self.settings.chunk_chars,
-                            1 if local else self.settings.analysis_workers)
+                            # Ollama lavora una richiesta alla volta; la quota gratuita di Gemini ha pochi RPM
+                            self.settings.analysis_workers if provider == "claude" else 1)
         analyzer.cache["provider"] = provider
         return analyzer
 

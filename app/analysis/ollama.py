@@ -13,6 +13,7 @@ from typing import TypeVar
 from pydantic import BaseModel, ValidationError
 
 from ..errors import AnalysisError
+from .schema import inline_schema
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -44,7 +45,7 @@ class OllamaLLM:
         body = {
             "model": self.model,
             "messages": [{"role": "system", "content": system}] + _flatten(messages),
-            "format": schema.model_json_schema(),  # output vincolato allo schema JSON
+            "format": inline_schema(schema),  # output vincolato allo schema JSON
             "stream": False,
             "options": {"num_ctx": self.num_ctx, "temperature": 0.2},
         }

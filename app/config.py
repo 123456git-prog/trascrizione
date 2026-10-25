@@ -49,8 +49,11 @@ class Settings:
         default_factory=lambda: os.getenv("DIARIZATION_MODEL", "pyannote/speaker-diarization-3.1")
     )
 
-    # Analisi del testo: "claude" (API, a pagamento) o "ollama" (modello locale, gratuito)
-    llm_provider: str = field(default_factory=lambda: os.getenv("LLM_PROVIDER", "claude"))
+    # Analisi del testo: "ollama" (locale, gratis, lento), "gemini" (cloud, quota gratuita,
+    # solo dati non sensibili) o "claude" (API a pagamento)
+    llm_provider: str = field(default_factory=lambda: os.getenv("LLM_PROVIDER", "ollama"))
+    gemini_api_key: str = field(default_factory=lambda: os.getenv("GEMINI_API_KEY", ""))
+    gemini_model: str = field(default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-3.8-flash"))
     ollama_model: str = field(default_factory=lambda: os.getenv("OLLAMA_MODEL", "gemma3:4b"))
     ollama_url: str = field(default_factory=lambda: os.getenv("OLLAMA_URL", "http://localhost:11434"))
     ollama_num_ctx: int = field(default_factory=lambda: _int("OLLAMA_NUM_CTX", 16384))
