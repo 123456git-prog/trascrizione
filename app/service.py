@@ -58,8 +58,13 @@ class Service:
 
     def import_audio(self, path: Path, title: Optional[str] = None) -> str:
         audio.check_file(path)
-        duration = audio.probe_duration(path)
         meta = self.store.create(path, title)
+        try:
+            # si misura la copia in archivio: se va sistemata (webm del browser) l'originale resta intatto
+            duration = audio.probe_duration(self.store.audio_path(meta.id))
+        except Exception:
+            self.store.delete(meta.id)
+            raise
         self.store.update_meta(meta.id, duration=duration)
         return meta.id
 

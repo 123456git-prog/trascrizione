@@ -5,7 +5,7 @@ import subprocess
 
 import pytest
 
-from app import cli
+from app import audio, cli
 from app.config import Settings
 from app.errors import AudioError
 from app.models import Segment, Transcript
@@ -109,3 +109,18 @@ def test_cli_commands(service, audio_file, tmp_path, monkeypatch, capsys):
 
     assert cli.main(["show", "inesistente"]) == 1
     assert "Errore:" in capsys.readouterr().err
+
+
+def test_browser_webm_without_duration_is_repaired(tmp_path):
+    # MediaRecorder produce webm senza durata nell'intestazione: va riscritto, non rifiutato
+    src = tmp_path / "Registrazione.webm"
+    with src.open("wb") as out:
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=d=3", "-c:a", "libopus",
+                        "-f", "webm", "pipe:1"], stdout=out, check=True)
+    original = src.read_bytes()
+    assert audio._read_duration(src) is None
+    svc = Service(Settings(data_dir=tmp_path / "data"))
+    rec_id = svc.import_audio(src)
+    assert abs(svc.store.meta(rec_id).duration - 3.0) < 0.2
+    assert audio._read_duration(svc.store.audio_path(rec_id)) is not None
+    assert src.read_bytes() == original

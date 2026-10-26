@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import shutil
+import re
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 from .errors import AudioError
 
@@ -34,7 +36,7 @@ def check_file(path: Path) -> None:
         raise AudioError("Il file audio è vuoto.")
 
 
-def probe_duration(path: Path) -> float:
+def _read_duration(path: Path) -> Optional[float]:
     ffprobe = _require("ffprobe")
     result = subprocess.run(
         [ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "json", str(path)],
@@ -46,7 +48,48 @@ def probe_duration(path: Path) -> float:
     try:
         return float(json.loads(result.stdout)["format"]["duration"])
     except (KeyError, ValueError, json.JSONDecodeError):
+        return None
+
+
+def _decoded_duration(path: Path) -> Optional[float]:
+    """Durata misurata decodificando tutto il file: lenta, ma funziona anche senza intestazione."""
+    result = subprocess.run(
+        [_require("ffmpeg"), "-nostdin", "-i", str(path), "-f", "null", "-"],
+        capture_output=True,
+        text=True,
+    )
+    times = re.findall(r"time=(\d+):(\d+):(\d+(?:\.\d+)?)", result.stderr)
+    if not times:
+        return None
+    h, m, s = times[-1]
+    return int(h) * 3600 + int(m) * 60 + float(s)
+
+
+def _remux(path: Path) -> bool:
+    """Riscrive il contenitore senza ricodificare. Le registrazioni fatte dal browser (webm)
+    non hanno la durata nell'intestazione: così la si aggiunge e il player può spostarsi nel file."""
+    tmp = path.with_name(f"{path.stem}.remux{path.suffix}")
+    result = subprocess.run(
+        [_require("ffmpeg"), "-nostdin", "-y", "-v", "error", "-i", str(path), "-c", "copy", str(tmp)],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0 or not tmp.exists() or tmp.stat().st_size == 0:
+        tmp.unlink(missing_ok=True)
+        return False
+    tmp.replace(path)
+    return True
+
+
+def probe_duration(path: Path) -> float:
+    duration = _read_duration(path)
+    if duration is None and _remux(path):
+        duration = _read_duration(path)
+    if duration is None:
+        duration = _decoded_duration(path)
+    if not duration:
         raise AudioError("Impossibile leggere la durata del file audio.")
+    return duration
 
 
 def to_wav16k(src: Path, dst: Path) -> Path:
