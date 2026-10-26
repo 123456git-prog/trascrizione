@@ -150,7 +150,11 @@ def test_jobs_resume_after_restart(tmp_path, monkeypatch, audio_bytes):
     jobs = JobQueue(service)
     jobs.start()
     deadline = time.time() + 10
-    while service.store.meta(rec_id).status != "pronta" and time.time() < deadline:
+    # il lavoro è finito quando la coda ha anche azzerato meta.job
+    while time.time() < deadline:
+        meta = service.store.meta(rec_id)
+        if meta.status == "pronta" and meta.job is None:
+            break
         time.sleep(0.05)
     jobs.stop()
     meta = service.store.meta(rec_id)

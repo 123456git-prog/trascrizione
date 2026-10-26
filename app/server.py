@@ -346,7 +346,8 @@ def main() -> None:
     import uvicorn
 
     settings = get_settings()
-    if sys.stdout is None:  # avvio nascosto (pythonw): niente console, si scrive su un file di log
+    hidden = sys.stdout is None
+    if hidden:  # avvio nascosto (pythonw): niente console, si scrive su un file di log
         settings.data_dir.mkdir(parents=True, exist_ok=True)
         log_file = open(settings.data_dir / "server.log", "a", encoding="utf-8", buffering=1)
         sys.stdout = sys.stderr = log_file
@@ -361,7 +362,8 @@ def main() -> None:
         print(f"Dal telefono (stessa rete Wi-Fi):  http://{_lan_address()}:{port}")
         if not os.getenv("APP_PASSWORD"):
             print("Consiglio: imposta APP_PASSWORD nel file .env per proteggere l'accesso dalla rete.")
-    print("Lascia aperta questa finestra: chiudendola l'app si spegne.\n")
+    if not hidden:
+        print("Lascia aperta questa finestra: chiudendola l'app si spegne.\n")
     uvicorn.run(create_app(settings), host=host, port=port, log_level="warning")
 
 
