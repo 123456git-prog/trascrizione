@@ -6,7 +6,7 @@ from pathlib import Path
 
 from ..errors import TranscriptionError
 from ..models import Segment, Transcript
-from .base import ProgressFn, no_progress
+from .base import ProgressFn, build_prompt, no_progress
 
 
 class FasterWhisperEngine:
@@ -50,7 +50,9 @@ class FasterWhisperEngine:
                 vad_filter=True,  # salta i silenzi, riduce le "allucinazioni"
                 beam_size=5,
                 condition_on_previous_text=False,  # evita ripetizioni a catena nelle registrazioni lunghe
-                initial_prompt=self.vocabulary or None,
+                # "hotwords" viene ripetuto in ogni finestra di 30 secondi; initial_prompt solo nella prima
+                # (con condition_on_previous_text=False)
+                hotwords=build_prompt(self.vocabulary),
             )
             total = duration or info.duration or 1.0
             segments: list[Segment] = []

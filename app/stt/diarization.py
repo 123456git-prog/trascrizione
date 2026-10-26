@@ -10,8 +10,9 @@ from .base import ProgressFn, no_progress
 
 
 class PyannoteDiarizer:
-    def __init__(self, model: str, hf_token: str):
+    def __init__(self, model: str, hf_token: str, num_speakers: int | None = None):
         self.model = model
+        self.num_speakers = num_speakers if num_speakers and num_speakers > 1 else None
         self.hf_token = hf_token
         self._pipeline = None
 
@@ -61,7 +62,7 @@ class PyannoteDiarizer:
 
         progress(0.0, "Riconoscimento interlocutori in corso")
         try:
-            output = pipeline(audio)
+            output = pipeline(audio, num_speakers=self.num_speakers) if self.num_speakers else pipeline(audio)
         except Exception as e:  # noqa: BLE001
             raise TranscriptionError(f"Errore nel riconoscimento interlocutori: {e}")
         annotation = getattr(output, "speaker_diarization", output)  # pyannote 4 restituisce un oggetto

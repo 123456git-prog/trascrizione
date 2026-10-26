@@ -88,7 +88,7 @@ class JobQueue:
         template = job.get("template") or "riunione"
         provider = job.get("provider")
         if kind in ("process", "transcribe"):
-            svc.transcribe(rec_id, force=job.get("force", False))
+            svc.transcribe(rec_id, force=job.get("force", False), speakers=job.get("speakers"))
         if kind in ("process", "analyze"):
             svc.analyze(rec_id, template, provider=provider)
         if kind == "summary":

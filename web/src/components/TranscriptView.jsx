@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, formatTime, speakerLabel } from "../api.js";
-import { Icon } from "./ui.jsx";
+import { Icon, Sheet, SpeakersField } from "./ui.jsx";
 
 export default function TranscriptView({ id, transcript, time, seek, onChange, stale }) {
   const [editing, setEditing] = useState(false);
   const [follow, setFollow] = useState(true);
   const [names, setNames] = useState(false);
+  const [redo, setRedo] = useState(false);
   const container = useRef(null);
   const segments = transcript.segments;
 
@@ -45,6 +46,7 @@ export default function TranscriptView({ id, transcript, time, seek, onChange, s
 
   return (
     <div className="transcript">
+      {redo && <Retranscribe id={id} onClose={() => setRedo(false)} onDone={onChange} />}
       <div className="toolbar">
         <label className="check small">
           <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} /> Segui l'audio
@@ -55,6 +57,9 @@ export default function TranscriptView({ id, transcript, time, seek, onChange, s
               Interlocutori
             </button>
           )}
+          <button className="btn small ghost" onClick={() => setRedo(true)}>
+            <Icon name="refresh" size={16} /> Ritrascrivi
+          </button>
           <button className={`btn small ${editing ? "primary" : "ghost"}`} onClick={() => setEditing(!editing)}>
             <Icon name="edit" size={16} /> {editing ? "Fine" : "Modifica"}
           </button>
@@ -160,5 +165,42 @@ function SpeakerNames({ id, transcript, speakers, onSaved }) {
       })}
       <button className="btn primary small">Salva nomi</button>
     </form>
+  );
+}
+
+// Rifà la trascrizione (es. dopo un aggiornamento dell'app, o indicando quante persone parlano).
+function Retranscribe({ id, onClose, onDone }) {
+  const [speakers, setSpeakers] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function start() {
+    setBusy(true);
+    setError("");
+    try {
+      await api.transcribe(id, { force: true, speakers });
+      onClose();
+      onDone();
+    } catch (e) {
+      setError(e.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Sheet title="Ritrascrivi" onClose={onClose}>
+      <div className="form">
+        <p className="small">
+          La registrazione viene trascritta di nuovo, con punteggiatura e riconoscimento degli interlocutori. Richiede
+          più o meno la durata dell'audio. Le correzioni fatte a mano andranno perse e, se c'era un'analisi, verrà
+          rifatta con lo stesso motore.
+        </p>
+        <SpeakersField value={speakers} onChange={setSpeakers} />
+        {error && <p className="error">{error}</p>}
+        <button className="btn primary wide" disabled={busy} onClick={start}>
+          Ritrascrivi
+        </button>
+      </div>
+    </Sheet>
   );
 }

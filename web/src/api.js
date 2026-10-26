@@ -49,7 +49,7 @@ export const api = {
   patchSegment: (id, sid, body) => request(`/api/recordings/${id}/segments/${sid}`, json("PATCH", body)),
   analyze: (id, body) => request(`/api/recordings/${id}/analyze`, json("POST", body)),
   summary: (id, body) => request(`/api/recordings/${id}/summary`, json("POST", body)),
-  transcribe: (id) => request(`/api/recordings/${id}/transcribe`, { method: "POST" }),
+  transcribe: (id, body = {}) => request(`/api/recordings/${id}/transcribe`, json("POST", body)),
   ask: (id, body) => request(`/api/recordings/${id}/ask`, json("POST", body)),
   templates: () => request("/api/templates"),
   createTemplate: (description, provider) =>

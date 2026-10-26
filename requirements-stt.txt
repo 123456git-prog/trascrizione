@@ -2,3 +2,5 @@
 faster-whisper>=1.1.0
 # faster-whisper 1.2 usa un parametro di av.open() rimosso in PyAV 16+
 av>=11,<16
+# Riconoscimento interlocutori leggero (scarica circa 35 MB di modelli al primo uso)
+sherpa-onnx>=1.12

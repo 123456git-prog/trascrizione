@@ -15,6 +15,16 @@ def no_progress(fraction: float, message: str) -> None:
     pass
 
 
+# Whisper imita lo stile del testo che riceve come suggerimento: una frase italiana ben punteggiata
+# lo spinge a mettere punti, virgole e domande. Senza, large-v3-turbo tende a omettere la punteggiatura.
+STYLE_PROMPT = "Buongiorno a tutti. Allora, cominciamo: oggi parliamo del progetto, d'accordo? Sì, certo. Va bene."
+
+
+def build_prompt(vocabulary: str) -> str:
+    vocabulary = vocabulary.strip().rstrip(".")
+    return f"{STYLE_PROMPT} Termini: {vocabulary}." if vocabulary else STYLE_PROMPT
+
+
 class SpeechToText(Protocol):
     name: str
 

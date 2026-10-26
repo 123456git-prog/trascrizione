@@ -22,12 +22,19 @@ def get_engine(settings: Settings) -> SpeechToText:
     raise TranscriptionError(f"Motore di trascrizione sconosciuto: '{settings.stt_engine}'")
 
 
-def get_diarizer(settings: Settings) -> Diarizer | None:
-    if not settings.diarization:
+def get_diarizer(settings: Settings, speakers: int | None = None) -> Diarizer | None:
+    """speakers: numero di persone che parlano, se noto (1 = nessun riconoscimento)."""
+    if not settings.diarization or speakers == 1:
         return None
-    from .diarization import PyannoteDiarizer
+    if settings.diarization_engine == "pyannote":
+        from .diarization import PyannoteDiarizer
 
-    return PyannoteDiarizer(settings.diarization_model, settings.hf_token)
+        return PyannoteDiarizer(settings.diarization_model, settings.hf_token, speakers)
+    if settings.diarization_engine == "sherpa":
+        from .sherpa_diarization import SherpaDiarizer
+
+        return SherpaDiarizer(settings.models_dir, speakers, settings.diarization_threshold)
+    raise TranscriptionError(f"Motore di riconoscimento interlocutori sconosciuto: '{settings.diarization_engine}'")
 
 
 __all__ = ["get_engine", "get_diarizer", "assign_speakers", "SpeechToText", "Diarizer"]

@@ -159,3 +159,32 @@ def test_jobs_resume_after_restart(tmp_path, monkeypatch, audio_bytes):
     jobs.stop()
     meta = service.store.meta(rec_id)
     assert meta.status == "pronta" and meta.job is None
+
+
+def test_retranscribe_with_speakers_redoes_analysis(client, audio_bytes, monkeypatch):
+    seen = []
+
+    class FakeDiarizer:
+        def diarize(self, wav, progress):
+            return [(0.0, 1.0, "B"), (1.0, 99.0, "A")]
+
+    def fake_get_diarizer(settings, speakers=None):
+        seen.append(speakers)
+        return FakeDiarizer()
+
+    monkeypatch.setattr("app.service.get_diarizer", fake_get_diarizer)
+    r = client.post("/api/recordings", files={"file": ("a.m4a", audio_bytes, "audio/mp4")},
+                    data={"provider": "ollama", "template": "intervista", "speakers": "3"})
+    rec_id = r.json()["id"]
+    wait_done(client, rec_id)
+    assert seen == [3]
+
+    r = client.post(f"/api/recordings/{rec_id}/transcribe", json={"force": True, "speakers": 2})
+    assert r.status_code == 202, r.text
+    meta = wait_done(client, rec_id)
+    assert meta["status"] == "pronta" and seen == [3, 2]
+    data = client.get(f"/api/recordings/{rec_id}").json()
+    assert {s["speaker"] for s in data["transcript"]["segments"]} <= {"SPEAKER_00", "SPEAKER_01"}
+    # analisi rifatta da zero con lo stesso motore e lo stesso template
+    assert data["analysis"]["provider"] == "ollama" and data["analysis"]["last_template"] == "intervista"
+    assert not data["analysis"].get("stale")

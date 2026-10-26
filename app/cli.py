@@ -87,7 +87,7 @@ def cmd_process(service: Service, args) -> None:
     rec_id = service.import_audio(Path(args.file), args.title)
     print(f"Registrazione creata: {rec_id}")
     try:
-        service.transcribe(rec_id, p)
+        service.transcribe(rec_id, p, speakers=args.persone)
         p.done()
         if args.only_transcribe:
             print(f"Trascrizione salvata. Per analizzarla: python -m app.cli analyze {rec_id}")
@@ -104,7 +104,7 @@ def cmd_process(service: Service, args) -> None:
 def cmd_transcribe(service: Service, args) -> None:
     rec_id = service.store.resolve_id(args.id)
     p = ProgressPrinter()
-    t = service.transcribe(rec_id, p, force=args.force)
+    t = service.transcribe(rec_id, p, force=args.force, speakers=args.persone)
     p.done()
     print(f"{len(t.segments)} segmenti, durata {format_ts(t.duration)}, motore {t.engine} ({t.model})")
 
@@ -257,11 +257,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--title")
     p.add_argument("--template", default="riunione")
     p.add_argument("--only-transcribe", action="store_true", help="solo trascrizione, senza Claude")
+    p.add_argument("--persone", type=int, help="quante persone parlano, se lo sai (migliora gli interlocutori)")
     p.set_defaults(func=cmd_process)
 
     p = sub.add_parser("transcribe", help="trascrive una registrazione già importata")
     p.add_argument("id")
     p.add_argument("--force", action="store_true", help="ritrascrivi anche se già fatto")
+    p.add_argument("--persone", type=int, help="quante persone parlano, se lo sai (migliora gli interlocutori)")
     p.set_defaults(func=cmd_transcribe)
 
     p = sub.add_parser("analyze", help="analizza (o riprende l'analisi di) una registrazione")

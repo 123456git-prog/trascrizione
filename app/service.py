@@ -68,7 +68,9 @@ class Service:
         self.store.update_meta(meta.id, duration=duration)
         return meta.id
 
-    def transcribe(self, rec_id: str, progress: Optional[ProgressFn] = None, force: bool = False) -> Transcript:
+    def transcribe(self, rec_id: str, progress: Optional[ProgressFn] = None, force: bool = False,
+                   speakers: Optional[int] = None) -> Transcript:
+        """speakers: quante persone parlano, se noto (migliora molto il riconoscimento)."""
         if self.store.has_transcript(rec_id) and not force:
             return self.store.transcript(rec_id)  # si trascrive una sola volta
         report = self._progress(rec_id, "trascrizione", progress)
@@ -78,7 +80,7 @@ class Service:
                 report(0.0, "Conversione audio")
                 wav = audio.to_wav16k(self.store.audio_path(rec_id), Path(tmp) / "audio16k.wav")
                 engine = get_engine(self.settings)
-                diarizer = get_diarizer(self.settings)
+                diarizer = get_diarizer(self.settings, speakers)
                 share = 0.8 if diarizer else 1.0
                 transcript = engine.transcribe(wav, meta.duration, lambda f, m: report(share * f, m))
                 if not transcript.segments:
@@ -86,6 +88,10 @@ class Service:
                 if diarizer:
                     turns = diarizer.diarize(wav, lambda f, m: report(0.8 + 0.2 * f, m))
                     transcript = assign_speakers(transcript, turns)
+            if force and self.store.has_transcript(rec_id):
+                # testo nuovo: l'analisi va rifatta, si tiene solo il motore scelto
+                old = self.store.analysis(rec_id)
+                self.store.save_analysis(rec_id, {"provider": old["provider"]} if old.get("provider") else {})
             self.store.save_transcript(rec_id, transcript)
             self.store.update_meta(rec_id, status="trascritta", progress=1.0, progress_message="Trascrizione salvata",
                                    error=None)

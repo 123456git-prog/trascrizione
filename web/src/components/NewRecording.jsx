@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, formatTime } from "../api.js";
-import { EnginePicker, Icon, Sheet } from "./ui.jsx";
+import { EnginePicker, Icon, Sheet, SpeakersField } from "./ui.jsx";
 
 const ACCEPT = ".mp3,.m4a,.wav,.webm,.ogg,.mp4,.aac,.flac,audio/*";
 
@@ -12,6 +12,7 @@ export default function NewRecording({ mode, onClose, onCreated }) {
   const [providers, setProviders] = useState([]);
   const [engine, setEngine] = useState("");
   const [analyzeNow, setAnalyzeNow] = useState(true);
+  const [speakers, setSpeakers] = useState(0);
   const [consent, setConsent] = useState(false);
   const [upload, setUpload] = useState(null);
   const [error, setError] = useState("");
@@ -36,7 +37,7 @@ export default function NewRecording({ mode, onClose, onCreated }) {
     try {
       const rec = await api.upload(
         file,
-        { title, template, provider: engine, analyze: analyzeNow && !!engine },
+        { title, template, provider: engine, analyze: analyzeNow && !!engine, speakers },
         setUpload,
       );
       onCreated(rec);
@@ -67,6 +68,8 @@ export default function NewRecording({ mode, onClose, onCreated }) {
             <span>Titolo (facoltativo, altrimenti lo propone l'analisi)</span>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="es. Riunione di reparto" />
           </label>
+
+          <SpeakersField value={speakers} onChange={setSpeakers} />
 
           {providers.length > 0 && !providers.some((p) => p.available) && (
             <p className="small warn">

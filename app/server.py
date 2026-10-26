@@ -48,6 +48,11 @@ class AnalyzeIn(BaseModel):
     force: bool = False
 
 
+class TranscribeIn(BaseModel):
+    force: bool = False
+    speakers: int = 0  # 0 = non noto
+
+
 class AskIn(BaseModel):
     question: str
     history: list[dict] = []
@@ -140,7 +145,7 @@ def create_app(settings: Optional[Settings] = None, service: Optional[Service] =
 
     @app.post("/api/recordings", dependencies=[api], status_code=201)
     def upload(file: UploadFile = File(...), title: str = Form(""), template: str = Form("riunione"),
-               provider: str = Form(""), analyze: bool = Form(True)):
+               provider: str = Form(""), analyze: bool = Form(True), speakers: int = Form(0)):
         suffix = Path(file.filename or "audio.webm").suffix.lower() or ".webm"
         service.templates.get(template)
         with tempfile.TemporaryDirectory() as tmp:
@@ -152,7 +157,8 @@ def create_app(settings: Optional[Settings] = None, service: Optional[Service] =
             if path.suffix.lower() != suffix:
                 path = path.rename(path.with_suffix(suffix))
             rec_id = service.import_audio(path, title.strip() or None)
-        jobs.submit(rec_id, "process" if analyze else "transcribe", template=template, provider=provider or None)
+        jobs.submit(rec_id, "process" if analyze else "transcribe", template=template, provider=provider or None,
+                    speakers=speakers or None)
         return summary_of(service.store.meta(rec_id))
 
     @app.get("/api/recordings/{rec_id}", dependencies=[api])
@@ -212,8 +218,14 @@ def create_app(settings: Optional[Settings] = None, service: Optional[Service] =
     # --- elaborazioni ---
 
     @app.post("/api/recordings/{rec_id}/transcribe", dependencies=[api], status_code=202)
-    def transcribe(rec_id: str, force: bool = False):
-        jobs.submit(rec_id, "transcribe", force=force)
+    def transcribe(rec_id: str, body: TranscribeIn = TranscribeIn()):
+        cache = service.store.analysis(rec_id)
+        if body.force and cache.get("summaries"):
+            # ritrascrizione: poi si rifà anche l'analisi, con lo stesso motore e template di prima
+            jobs.submit(rec_id, "process", force=True, speakers=body.speakers or None,
+                        provider=cache.get("provider"), template=cache.get("last_template") or "riunione")
+        else:
+            jobs.submit(rec_id, "transcribe", force=body.force, speakers=body.speakers or None)
         return summary_of(service.store.meta(rec_id))
 
     @app.post("/api/recordings/{rec_id}/analyze", dependencies=[api], status_code=202)

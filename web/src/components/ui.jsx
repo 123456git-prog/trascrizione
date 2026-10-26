@@ -94,3 +94,21 @@ export function EnginePicker({ providers, value, onChange }) {
     </div>
   );
 }
+
+// Quante persone parlano: se lo si sa, il riconoscimento degli interlocutori è molto più preciso.
+export function SpeakersField({ value, onChange }) {
+  return (
+    <label className="field">
+      <span>Quante persone parlano?</span>
+      <select value={value} onChange={(e) => onChange(Number(e.target.value))}>
+        <option value={0}>Non so (le conta l'app)</option>
+        <option value={1}>Una sola</option>
+        {[2, 3, 4, 5, 6, 7, 8].map((n) => (
+          <option key={n} value={n}>
+            {n}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}

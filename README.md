@@ -12,7 +12,7 @@ audio (mp3, m4a, wav)
    ▼
 TRASCRIZIONE (sempre in locale)          ANALISI DEL TESTO (scegli ogni volta)
 faster-whisper  o  whisper.cpp    ──►    Ollama (locale) · Gemini (cloud gratis) · Claude
-+ pyannote per gli interlocutori         blocchi → appunti → riassunto finale
++ sherpa-onnx per gli interlocutori      blocchi → appunti → riassunto finale
    │                                     keywords · estrazione JSON · mappa · chat
    ▼                                              │
 data/recordings/<id>/  ◄──────────────────────────┘
@@ -171,12 +171,22 @@ L'interfaccia è già compilata in `web/dist`, quindi non serve installare altro
 
 ### Riconoscimento degli interlocutori (in locale)
 
+È attivo di default e usa [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx), installato con `requirements-stt.txt`. Al primo uso scarica circa 35 MB di modelli in `data/models`, senza account. Per 2 ore di audio aggiunge 10-20 minuti. L'audio non lascia il PC.
+
+- Quando carichi un file indica **quante persone parlano**: con il numero giusto il risultato è molto più preciso. Con "Non so" le conta l'app, e se ne trova una in più basta dare lo stesso nome a due etichette (pulsante *Interlocutori*).
+- Per le registrazioni già fatte c'è **Ritrascrivi** nella scheda Trascrizione (o `python -m app transcribe ID --force --persone 3`).
+- `DIARIZATION=false` nel `.env` lo disattiva; `DIARIZATION_THRESHOLD` (0.4) regola quante voci distingue quando il numero non è noto: più alto = meno interlocutori.
+
+In alternativa si può usare pyannote, più pesante (circa 1 GB, 30-60 minuti per 2 ore di audio):
+
 1. Crea un account gratuito su [huggingface.co](https://huggingface.co), poi un token in Settings → Access Tokens (tipo *Read*).
 2. Accetta le condizioni d'uso di [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) e [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0).
-3. Installa: `pip install -r requirements-diarization.txt` (circa 1 GB).
-4. Nel file `.env` imposta `DIARIZATION=true` e `HF_TOKEN=...`.
+3. Installa: `pip install -r requirements-diarization.txt`.
+4. Nel file `.env` imposta `DIARIZATION_ENGINE=pyannote` e `HF_TOKEN=...`.
 
-Aggiunge circa 30-60 minuti per 2 ore di audio. L'audio non lascia il PC: da Hugging Face si scarica solo il modello.
+### Punteggiatura
+
+Il modello di trascrizione riceve in ogni blocco di 30 secondi una frase d'esempio ben punteggiata, che lo spinge a mettere punti, virgole e punti di domanda. Anche le parole di `WHISPER_VOCABULARY` vengono aggiunte lì.
 
 ### whisper.cpp con la grafica AMD (sperimentale)
 

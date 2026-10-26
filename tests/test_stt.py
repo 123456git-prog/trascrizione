@@ -55,5 +55,19 @@ def test_faster_whisper_engine_with_fake_model(monkeypatch, tmp_path):
     assert [(s.id, s.text) for s in t.segments] == [(0, "Ciao"), (1, "a tutti")]
     assert calls["init"] == ("large-v3-turbo", {"device": "cpu", "compute_type": "int8", "cpu_threads": 0})
     assert calls["transcribe"]["language"] == "it" and calls["transcribe"]["vad_filter"] is True
-    assert calls["transcribe"]["initial_prompt"] == "Anthropic, GDPR"
+    prompt = calls["transcribe"]["hotwords"]
+    assert prompt.endswith("Termini: Anthropic, GDPR.") and "?" in prompt
     assert progress[-1] == 1.0
+
+
+def test_get_diarizer_choice(tmp_path):
+    from app.config import Settings
+    from app.stt import get_diarizer
+    from app.stt.sherpa_diarization import SherpaDiarizer
+
+    settings = Settings(data_dir=tmp_path)
+    assert get_diarizer(settings, speakers=1) is None  # una sola persona: niente da distinguere
+    d = get_diarizer(settings, speakers=3)
+    assert isinstance(d, SherpaDiarizer) and d.num_speakers == 3
+    assert get_diarizer(settings).num_speakers is None
+    assert get_diarizer(Settings(data_dir=tmp_path, diarization=False)) is None

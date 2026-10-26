@@ -42,8 +42,12 @@ class Settings:
     # Parole difficili (nomi, sigle) che aiutano il riconoscimento, separate da virgola
     whisper_vocabulary: str = field(default_factory=lambda: os.getenv("WHISPER_VOCABULARY", ""))
 
-    # Riconoscimento interlocutori (pyannote, in locale). Serve un token gratuito di Hugging Face.
-    diarization: bool = field(default_factory=lambda: _bool("DIARIZATION", False))
+    # Riconoscimento interlocutori in locale: "sherpa" (leggero, nessun account) o "pyannote"
+    # (più pesante, serve un token gratuito di Hugging Face)
+    diarization: bool = field(default_factory=lambda: _bool("DIARIZATION", True))
+    diarization_engine: str = field(default_factory=lambda: os.getenv("DIARIZATION_ENGINE", "sherpa"))
+    # usata solo se il numero di persone non è noto: più alta = meno interlocutori distinti
+    diarization_threshold: float = field(default_factory=lambda: float(os.getenv("DIARIZATION_THRESHOLD", "0.4")))
     hf_token: str = field(default_factory=lambda: os.getenv("HF_TOKEN", ""))
     diarization_model: str = field(
         default_factory=lambda: os.getenv("DIARIZATION_MODEL", "pyannote/speaker-diarization-3.1")
@@ -63,6 +67,10 @@ class Settings:
     # Dimensione dei blocchi per le registrazioni lunghe (caratteri, circa 4 caratteri per token)
     chunk_chars: int = field(default_factory=lambda: _int("CHUNK_CHARS", 40000))
     analysis_workers: int = field(default_factory=lambda: _int("ANALYSIS_WORKERS", 3))
+
+    @property
+    def models_dir(self) -> Path:
+        return self.data_dir / "models"
 
     @property
     def recordings_dir(self) -> Path:

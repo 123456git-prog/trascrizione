@@ -11,7 +11,7 @@ from pathlib import Path
 
 from ..errors import TranscriptionError
 from ..models import Segment, Transcript
-from .base import ProgressFn, no_progress
+from .base import ProgressFn, build_prompt, no_progress
 
 _PROGRESS_RE = re.compile(r"progress\s*=\s*(\d+)%")
 
@@ -56,8 +56,7 @@ class WhisperCppEngine:
                    "-oj", "-of", str(out_base), "-pp"]
             if self.threads:
                 cmd += ["-t", str(self.threads)]
-            if self.vocabulary:
-                cmd += ["--prompt", self.vocabulary]
+            cmd += ["--prompt", build_prompt(self.vocabulary)]
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                     text=True, encoding="utf-8", errors="replace")
             tail: list[str] = []
