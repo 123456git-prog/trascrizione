@@ -17,12 +17,20 @@ def format_ts(seconds: float) -> str:
 # --- Trascrizione -----------------------------------------------------------
 
 
+class Word(BaseModel):
+    start: float
+    end: float
+    text: str  # con lo spazio iniziale, come lo restituisce Whisper
+
+
 class Segment(BaseModel):
     id: int
     start: float
     end: float
     text: str
     speaker: Optional[str] = None
+    # tempi delle singole parole: servono solo per dividere i segmenti tra interlocutori, non si salvano
+    words: Optional[list[Word]] = Field(default=None, exclude=True)
 
 
 class Transcript(BaseModel):

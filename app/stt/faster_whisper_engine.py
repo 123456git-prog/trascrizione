@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..errors import TranscriptionError
-from ..models import Segment, Transcript
-from .base import ProgressFn, build_prompt, no_progress
+from ..models import Segment, Transcript, Word
+from .base import ProgressFn, build_prompt, no_progress, split_sentences
 
 
 class FasterWhisperEngine:
@@ -49,6 +49,7 @@ class FasterWhisperEngine:
                 language=self.language,
                 vad_filter=True,  # salta i silenzi, riduce le "allucinazioni"
                 beam_size=5,
+                word_timestamps=True,  # per dividere in frasi e tra interlocutori
                 condition_on_previous_text=False,  # evita ripetizioni a catena nelle registrazioni lunghe
                 # "hotwords" viene ripetuto in ogni finestra di 30 secondi; initial_prompt solo nella prima
                 # (con condition_on_previous_text=False)
@@ -57,10 +58,17 @@ class FasterWhisperEngine:
             total = duration or info.duration or 1.0
             segments: list[Segment] = []
             for s in segments_iter:
-                text = s.text.strip()
-                if not text:
-                    continue
-                segments.append(Segment(id=len(segments), start=round(s.start, 2), end=round(s.end, 2), text=text))
+                words = [Word(start=w.start, end=w.end, text=w.word) for w in (getattr(s, "words", None) or [])]
+                if words:
+                    # un segmento di Whisper può contenere più frasi (e più persone): una frase per segmento
+                    for sentence in split_sentences(words):
+                        text = "".join(w.text for w in sentence).strip()
+                        if text:
+                            segments.append(Segment(id=len(segments), start=round(sentence[0].start, 2),
+                                                    end=round(sentence[-1].end, 2), text=text, words=sentence))
+                elif s.text.strip():
+                    segments.append(Segment(id=len(segments), start=round(s.start, 2), end=round(s.end, 2),
+                                            text=s.text.strip()))
                 progress(min(s.end / total, 1.0), f"Trascritti {int(s.end // 60)} min su {int(total // 60)}")
         except TranscriptionError:
             raise
