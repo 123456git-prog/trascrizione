@@ -1,3 +1,5 @@
+import { createPortal } from "react-dom";
+
 // Piccoli componenti condivisi: icone (SVG inline, nessuna libreria esterna) e badge di stato.
 
 const PATHS = {
@@ -16,6 +18,7 @@ const PATHS = {
   layers: "M12 3 2 8l10 5 10-5-10-5Zm-8.2 9L2 13l10 5 10-5-1.8-1-8.2 4.1L3.8 12Zm0 4L2 17l10 5 10-5-1.8-1-8.2 4.1L3.8 16Z",
   close: "M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19l5.6-5.6 5.6 5.6 1.4-1.4-5.6-5.6L19 6.4 17.6 5 12 10.6 6.4 5Z",
   stop: "M6 6h12v12H6V6Z",
+  phone: "M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm0 3v13h8V5H8Zm3 14v1h2v-1h-2Z",
   refresh: "M12 5a7 7 0 0 0-6.9 6h2A5 5 0 0 1 16 8.3L13.5 11H20V4.5L17.4 7A7 7 0 0 0 12 5Zm6.9 8h-2A5 5 0 0 1 8 15.7l2.5-2.7H4v6.5L6.6 17A7 7 0 0 0 18.9 13Z",
 };
 
@@ -49,7 +52,8 @@ export function StatusBadge({ meta }) {
 }
 
 export function Sheet({ title, onClose, children }) {
-  return (
+  // portal sul body: il pannello resta sopra a tutto anche se aperto da un elemento "sticky"
+  return createPortal(
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <header className="sheet-head">
@@ -60,7 +64,8 @@ export function Sheet({ title, onClose, children }) {
         </header>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

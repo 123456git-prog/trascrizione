@@ -12,6 +12,7 @@ import logging
 import os
 import shutil
 import socket
+import sys
 import tempfile
 import urllib.request
 from contextlib import asynccontextmanager
@@ -284,6 +285,12 @@ def create_app(settings: Optional[Settings] = None, service: Optional[Service] =
     def providers():
         return provider_status(settings)
 
+    @app.get("/api/info", dependencies=[api])
+    def info(request: Request):
+        # indirizzo da aprire sul telefono: cambia se cambi rete Wi-Fi, per questo si calcola ogni volta
+        port = request.url.port or 80
+        return {"lan_url": f"http://{_lan_address()}:{port}"}
+
     @app.get("/api/health")
     def health():
         return {"ok": True}
@@ -327,19 +334,35 @@ def _lan_address() -> str:
         return "127.0.0.1"
 
 
+def _already_running(port: int) -> bool:
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=2) as r:
+            return r.status == 200
+    except OSError:
+        return False
+
+
 def main() -> None:
     import uvicorn
 
+    settings = get_settings()
+    if sys.stdout is None:  # avvio nascosto (pythonw): niente console, si scrive su un file di log
+        settings.data_dir.mkdir(parents=True, exist_ok=True)
+        log_file = open(settings.data_dir / "server.log", "a", encoding="utf-8", buffering=1)
+        sys.stdout = sys.stderr = log_file
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "8000"))
+    if _already_running(port):
+        print(f"L'app è già accesa: apri http://localhost:{port}")
+        return
     print(f"\nApri nel browser:  http://localhost:{port}")
     if host == "0.0.0.0":
         print(f"Dal telefono (stessa rete Wi-Fi):  http://{_lan_address()}:{port}")
         if not os.getenv("APP_PASSWORD"):
             print("Consiglio: imposta APP_PASSWORD nel file .env per proteggere l'accesso dalla rete.")
-    print()
-    uvicorn.run(create_app(), host=host, port=port, log_level="warning")
+    print("Lascia aperta questa finestra: chiudendola l'app si spegne.\n")
+    uvicorn.run(create_app(settings), host=host, port=port, log_level="warning")
 
 
 if __name__ == "__main__":

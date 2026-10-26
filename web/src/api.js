@@ -56,6 +56,7 @@ export const api = {
     request("/api/templates", json("POST", { description, provider })),
   deleteTemplate: (id) => request(`/api/templates/${id}`, { method: "DELETE" }),
   providers: () => request("/api/providers"),
+  info: () => request("/api/info"),
   audioUrl: (id) => `/api/recordings/${id}/audio`,
   exportUrl: (id, format = "md", template) =>
     `/api/recordings/${id}/export?format=${format}${template ? `&template=${template}` : ""}`,

@@ -120,6 +120,7 @@ def test_errors_and_templates(client, audio_bytes):
     assert client.delete("/api/templates/riunione").status_code == 400
     assert client.delete("/api/templates/condominio").status_code == 204
 
+    assert client.get("/api/info").json()["lan_url"].startswith("http://")
     providers = {p["id"]: p for p in client.get("/api/providers").json()}
     assert providers["ollama"]["sensitive_ok"] and not providers["gemini"]["sensitive_ok"]
 

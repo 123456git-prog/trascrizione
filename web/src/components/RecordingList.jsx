@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ACTIVE, api, formatDate, formatTime } from "../api.js";
 import NewRecording from "./NewRecording.jsx";
+import PhoneLink from "./PhoneLink.jsx";
 import { Icon, StatusBadge } from "./ui.jsx";
 
 export default function RecordingList() {
@@ -35,6 +36,7 @@ export default function RecordingList() {
     <main className="page">
       <header className="topbar">
         <h1>Registrazioni</h1>
+        <PhoneLink />
         <a className="icon-btn" href="#/template" title="Template di riassunto">
           <Icon name="layers" />
         </a>

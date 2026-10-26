@@ -328,3 +328,7 @@ button.chip { cursor: pointer; }
 
 .export-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .export-buttons .btn { text-decoration: none; color: var(--ink); }
+
+.phone-link { display: grid; justify-items: center; gap: 8px; padding-bottom: 8px; }
+.qr { width: 220px; height: 220px; background: #fff; border-radius: 12px; padding: 6px; }
+.qr svg { width: 100%; height: 100%; display: block; }

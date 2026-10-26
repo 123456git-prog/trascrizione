@@ -149,9 +149,11 @@ python -m app.cli templates create "assemblea di condominio: spese approvate, vo
 
 ## Interfaccia web
 
-```powershell
-python -m app.server
-```
+**Avvio:** fai doppio clic su `avvia.bat` nella cartella del progetto (puoi crearne un collegamento sul desktop). Si apre una finestra nera, che va lasciata aperta, e dopo qualche secondo il browser. In alternativa: `python -m app.server`.
+
+**Avvio automatico:** esegui una volta `avvio-automatico.bat` e l'app si accenderà da sola, senza finestre, ogni volta che accendi il PC. Rieseguilo per disattivarlo. Il registro degli eventi è in `data\server.log`.
+
+**Dal telefono:** nella pagina delle registrazioni tocca l'icona del telefono in alto. Compaiono l'indirizzo giusto per la rete attuale e un QR code da inquadrare. L'indirizzo cambia quando cambi rete Wi-Fi.
 
 Il server mostra due indirizzi: `http://localhost:8000` per il PC e `http://192.168.x.x:8000` per il telefono collegato allo stesso Wi-Fi. La prima volta Windows chiede se consentire l'accesso alla rete: scegli **Reti private**.
 
