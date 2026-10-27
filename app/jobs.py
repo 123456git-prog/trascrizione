@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import queue
+import sys
 import threading
 from typing import Optional
 
@@ -16,6 +17,20 @@ from .search import SearchIndex
 from .service import Service
 
 log = logging.getLogger("trascrizione.jobs")
+
+
+def _keep_awake(on: bool) -> None:
+    """Su Windows impedisce la sospensione automatica mentre un'elaborazione è in corso
+    (una trascrizione di 2 ore supera il tempo di inattività). Altrove non fa nulla."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        ES_CONTINUOUS, ES_SYSTEM_REQUIRED = 0x80000000, 0x00000001
+        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | (ES_SYSTEM_REQUIRED if on else 0))
+    except Exception:  # noqa: BLE001 - è solo una comodità
+        log.debug("SetThreadExecutionState non disponibile", exc_info=True)
 
 ACTIVE_STATES = {"in coda", "trascrizione", "analisi"}
 
@@ -62,6 +77,7 @@ class JobQueue:
             if rec_id is None:
                 return
             self.current = rec_id
+            _keep_awake(True)
             try:
                 self._execute(rec_id)
             except Exception as e:  # noqa: BLE001 - il worker non deve mai fermarsi
@@ -73,6 +89,8 @@ class JobQueue:
                     pass  # registrazione eliminata nel frattempo
             finally:
                 self.current = None
+                if self._queue.empty():
+                    _keep_awake(False)
                 if self.index:
                     self.index.index(self.service.store, rec_id)
 
